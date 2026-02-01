@@ -70,3 +70,10 @@ certs
 server/etc/certs
 
 extras/package/debian/snap*.debhelper.log
+
+# macOS
+.DS_Store
+
+# santcasp build artifacts
+build-*/
+dist/

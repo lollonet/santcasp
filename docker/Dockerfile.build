@@ -1,0 +1,33 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install native build tools and MinGW for cross-compilation
+RUN apt-get update && apt-get install -y \
+    build-essential cmake ccache wget git curl zip unzip tar pkg-config \
+    # Linux dependencies
+    libasound2-dev libflac-dev libvorbis-dev libopus-dev \
+    libogg-dev libsoxr-dev libssl-dev libavahi-client-dev \
+    libexpat1-dev \
+    # MinGW cross-compiler for Windows
+    mingw-w64 mingw-w64-tools gcc-mingw-w64 g++-mingw-w64 \
+    gcc-mingw-w64-x86-64-posix-runtime \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and extract Boost 1.90.0 (header-only)
+RUN wget --no-check-certificate -O boost_1_90_0.tar.gz \
+    https://archives.boost.io/release/1.90.0/source/boost_1_90_0.tar.gz \
+    && tar -xzf boost_1_90_0.tar.gz -C /opt/ \
+    && rm boost_1_90_0.tar.gz
+
+# Install vcpkg for Windows dependencies
+RUN git clone https://github.com/Microsoft/vcpkg.git /opt/vcpkg \
+    && /opt/vcpkg/bootstrap-vcpkg.sh \
+    && /opt/vcpkg/vcpkg install \
+        libflac libvorbis opus soxr \
+        --triplet x64-mingw-dynamic
+
+ENV BOOST_ROOT=/opt/boost_1_90_0
+ENV VCPKG_ROOT=/opt/vcpkg
+
+WORKDIR /snapcast
