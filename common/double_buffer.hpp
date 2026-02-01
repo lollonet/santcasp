@@ -142,10 +142,10 @@ public:
         return buffer.empty();
     }
 
-    /// Set size of the buffer (capped at 10000)
+    /// Set size of the buffer (capped to prevent unbounded memory growth)
     void setSize(size_t size)
     {
-        static constexpr size_t kMaxBufferSize = 10000;
+        static constexpr size_t kMaxBufferSize = 10000; // ~80KB for int64_t, sorts in <1ms
         bufferSize = std::min(size, kMaxBufferSize);
     }
 

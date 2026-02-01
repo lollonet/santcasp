@@ -288,9 +288,11 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
             streamSession->addRttSample(rtt_usec);
         }
 
-        // Log RTT stats periodically (every 60 samples, ~1 per second)
+        // Log RTT stats periodically. Snapcast sends ~1 time message/sec,
+        // so 60 samples ≈ 1 log line per minute per client.
+        constexpr size_t kLogInterval = 60;
         size_t sample_count = streamSession->rttSampleCount();
-        if (sample_count > 0 && sample_count % 60 == 0)
+        if (sample_count > 0 && sample_count % kLogInterval == 0)
         {
             auto pcts = streamSession->rttPercentiles();
             double median_ms = static_cast<double>(pcts[0]) / 1000.0;

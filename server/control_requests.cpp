@@ -354,9 +354,10 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
         double jitter_ms = p95_ms - median_ms;
 
         // Suggested latency: negative value = increase buffer to absorb jitter.
-        constexpr double kJitterSafetyFactor = 1.5;
+        constexpr double kJitterSafetyFactor = 1.5;  // safety margin multiplier
+        constexpr double kJitterThresholdMs = 2.0;    // below this, jitter is negligible
         int suggested = 0;
-        if (jitter_ms > 2.0)
+        if (jitter_ms > kJitterThresholdMs)
             suggested = -static_cast<int>(jitter_ms * kJitterSafetyFactor + 0.5);
 
         result["rtt_median_ms"] = median_ms;
