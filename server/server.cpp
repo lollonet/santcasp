@@ -279,12 +279,13 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
         // "\n";
         streamSession->send(timeMsg);
 
-        // Accumulate RTT sample for time statistics (validate bounds before arithmetic)
-        if (timeMsg->latency.sec >= 0 && timeMsg->latency.sec < 10)
+        // Accumulate RTT sample for time statistics.
+        // Cap at 10s — anything above is bogus (network glitch or clock skew).
+        if (timeMsg->latency.sec >= 0 && timeMsg->latency.sec < 10 &&
+            timeMsg->latency.usec >= 0 && timeMsg->latency.usec < 1000000)
         {
             int64_t rtt_usec = static_cast<int64_t>(timeMsg->latency.sec) * 1000000 + timeMsg->latency.usec;
-            if (rtt_usec >= 0)
-                streamSession->addRttSample(rtt_usec);
+            streamSession->addRttSample(rtt_usec);
         }
 
         // Log RTT stats periodically (every 60 samples, ~1 per second)
