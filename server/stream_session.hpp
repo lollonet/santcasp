@@ -21,6 +21,7 @@
 
 // local headers
 #include "authinfo.hpp"
+#include "common/double_buffer.hpp"
 #include "common/message/message.hpp"
 #include "streamreader/stream_manager.hpp"
 
@@ -185,6 +186,48 @@ public:
     /// Authentication info attached to this session
     AuthInfo authinfo;
 
+    /// Add a one-way latency sample in microseconds
+    void addLatencySample(int64_t delay_usec)
+    {
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        latencyBuffer_.add(delay_usec);
+    }
+
+    /// @return number of latency samples collected (thread-safe)
+    size_t latencySampleCount() const
+    {
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.size();
+    }
+
+    /// @return true if latency buffer has enough samples for statistics (thread-safe)
+    bool hasLatencyStats() const
+    {
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.full();
+    }
+
+    /// @return latency median and P95 in microseconds, single sort (thread-safe)
+    std::array<int64_t, 2> latencyPercentiles() const
+    {
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.percentiles<2>({50, 95});
+    }
+
+    /// @return latency median in microseconds (thread-safe)
+    int64_t latencyMedian() const
+    {
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.median();
+    }
+
+    /// @return latency percentile in microseconds (thread-safe)
+    int64_t latencyPercentile(unsigned int p) const
+    {
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.percentile(p);
+    }
+
 protected:
     /// Send next message from "messages_"
     void sendNext();
@@ -198,4 +241,6 @@ protected:
     boost::asio::strand<boost::asio::any_io_executor> strand_; ///< strand to sync IO on
     std::deque<shared_const_buffer> messages_;                 ///< messages to be sent
     mutable std::mutex mutex_;                                 ///< protect pcm_stream_
+    mutable std::mutex latencyMutex_{};                          ///< protect latencyBuffer_
+    DoubleBuffer<int64_t> latencyBuffer_{100};                  ///< one-way latency samples (usec), 100 ≈ ~100s at 1 sample/s
 };
