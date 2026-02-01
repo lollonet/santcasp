@@ -378,7 +378,7 @@ Request::Description ClientGetTimeStatsRequest::description() const
 {
     return {"Get client one-way latency statistics and suggested buffer",
             {{"id", Description::Type::string, "client id"}},
-            {Description::Type::object, "RTT median, P95, jitter in ms, sample count, and suggested latency"}};
+            {Description::Type::object, "Latency median, P95, jitter in ms, sample count, and suggested buffer"}};
 }
 
 
