@@ -279,6 +279,32 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
         // "\n";
         streamSession->send(timeMsg);
 
+        // Accumulate RTT sample for time statistics.
+        // Cap at 10s — anything above is bogus (network glitch or clock skew).
+        if (timeMsg->latency.sec >= 0 && timeMsg->latency.sec < 10 &&
+            timeMsg->latency.usec >= 0 && timeMsg->latency.usec < 1000000)
+        {
+            int64_t rtt_usec = static_cast<int64_t>(timeMsg->latency.sec) * 1000000 + timeMsg->latency.usec;
+            streamSession->addRttSample(rtt_usec);
+        }
+
+        // Log RTT stats periodically. Snapcast sends ~1 time message/sec,
+        // so 60 samples ≈ 1 log line per minute per client.
+        constexpr size_t kLogInterval = 60;
+        size_t sample_count = streamSession->rttSampleCount();
+        if (sample_count > 0 && sample_count % kLogInterval == 0)
+        {
+            auto pcts = streamSession->rttPercentiles();
+            double median_ms = static_cast<double>(pcts[0]) / 1000.0;
+            double p95_ms = static_cast<double>(pcts[1]) / 1000.0;
+            double jitter_ms = p95_ms - median_ms;
+            LOG(DEBUG, LOG_TAG) << "TimeStats client=" << streamSession->clientId
+                                << " RTT median=" << median_ms << "ms"
+                                << " p95=" << p95_ms << "ms"
+                                << " jitter=" << jitter_ms << "ms"
+                                << " samples=" << sample_count << "\n";
+        }
+
         // refresh streamSession state
         ClientInfoPtr client = Config::instance().getClientInfo(streamSession->clientId);
         if (client != nullptr)
