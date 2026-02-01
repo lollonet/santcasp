@@ -242,5 +242,5 @@ protected:
     std::deque<shared_const_buffer> messages_;                 ///< messages to be sent
     mutable std::mutex mutex_;                                 ///< protect pcm_stream_
     mutable std::mutex rttMutex_;                              ///< protect rttBuffer_
-    DoubleBuffer<int64_t> rttBuffer_{100};                     ///< RTT samples buffer for time stats
+    DoubleBuffer<int64_t> rttBuffer_{100};                     ///< RTT samples (usec), 100 ≈ ~100s at 1 sample/s
 };

@@ -348,7 +348,7 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
     }
     else
     {
-        auto pcts = session->rttPercentiles();
+        auto pcts = session->rttPercentiles(); // {p50, p95} in microseconds
         double median_ms = static_cast<double>(pcts[0]) / 1000.0;
         double p95_ms = static_cast<double>(pcts[1]) / 1000.0;
         double jitter_ms = p95_ms - median_ms;

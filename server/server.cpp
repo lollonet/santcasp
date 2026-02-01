@@ -279,13 +279,17 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
         // "\n";
         streamSession->send(timeMsg);
 
-        // Accumulate RTT sample for time statistics (validate bounds first)
-        int64_t rtt_usec = static_cast<int64_t>(timeMsg->latency.sec) * 1000000 + timeMsg->latency.usec;
-        if (timeMsg->latency.sec >= 0 && timeMsg->latency.sec < 10 && rtt_usec >= 0)
-            streamSession->addRttSample(rtt_usec);
+        // Accumulate RTT sample for time statistics (validate bounds before arithmetic)
+        if (timeMsg->latency.sec >= 0 && timeMsg->latency.sec < 10)
+        {
+            int64_t rtt_usec = static_cast<int64_t>(timeMsg->latency.sec) * 1000000 + timeMsg->latency.usec;
+            if (rtt_usec >= 0)
+                streamSession->addRttSample(rtt_usec);
+        }
 
         // Log RTT stats periodically (every 60 samples, ~1 per second)
-        if (streamSession->rttSampleCount() % 60 == 0 && streamSession->rttSampleCount() > 0)
+        size_t sample_count = streamSession->rttSampleCount();
+        if (sample_count > 0 && sample_count % 60 == 0)
         {
             auto pcts = streamSession->rttPercentiles();
             double median_ms = static_cast<double>(pcts[0]) / 1000.0;
@@ -295,7 +299,7 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
                                 << " RTT median=" << median_ms << "ms"
                                 << " p95=" << p95_ms << "ms"
                                 << " jitter=" << jitter_ms << "ms"
-                                << " samples=" << streamSession->rttSampleCount() << "\n";
+                                << " samples=" << sample_count << "\n";
         }
 
         // refresh streamSession state
