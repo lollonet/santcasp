@@ -58,26 +58,26 @@ public:
     }
 
     /// @return median as mean over N values around the median
-    T median(uint16_t mean = 1) const
+    T median(size_t mean = 1) const
     {
         if (buffer.empty())
-            return 0;
+            return T{};
         std::deque<T> tmpBuffer(buffer.begin(), buffer.end());
         std::sort(tmpBuffer.begin(), tmpBuffer.end());
         if ((mean <= 1) || (tmpBuffer.size() < mean))
             return tmpBuffer[tmpBuffer.size() / 2];
         else
         {
-            uint16_t low = static_cast<uint16_t>(tmpBuffer.size()) / 2;
-            uint16_t high = low;
-            low -= mean / 2;
-            high += mean / 2;
-            T result((T)0);
-            for (uint16_t i = low; i <= high; ++i)
+            size_t mid = tmpBuffer.size() / 2;
+            size_t low = mid - mean / 2;
+            size_t high = mid + mean / 2;
+            T result = T{};
+            size_t count = high - low + 1;
+            for (size_t i = low; i <= high; ++i)
             {
                 result += tmpBuffer[i];
             }
-            return result / mean;
+            return result / static_cast<T>(count);
         }
     }
 
@@ -85,35 +85,35 @@ public:
     double mean() const
     {
         if (buffer.empty())
-            return 0;
-        double mean = 0.;
+            return 0.0;
+        double sum = 0.0;
         for (size_t n = 0; n < buffer.size(); ++n)
-            mean += (float)buffer[n] / (float)buffer.size();
-        return mean;
+            sum += static_cast<double>(buffer[n]);
+        return sum / static_cast<double>(buffer.size());
     }
 
     /// @return @p percentile percentile
     T percentile(unsigned int percentile) const
     {
         if (buffer.empty())
-            return 0;
+            return T{};
         std::deque<T> tmpBuffer(buffer.begin(), buffer.end());
         std::sort(tmpBuffer.begin(), tmpBuffer.end());
-        return tmpBuffer[(size_t)((tmpBuffer.size() - 1) * ((float)percentile / (float)100))];
+        return tmpBuffer[static_cast<size_t>((tmpBuffer.size() - 1) * (static_cast<double>(percentile) / 100.0))];
     }
 
     /// @return array of different percentiles
     template <std::size_t Size>
-    std::array<T, Size> percentiles(std::array<uint8_t, Size> percentiles) const
+    std::array<T, Size> percentiles(const std::array<uint8_t, Size>& percentiles) const
     {
         std::array<T, Size> result;
-        result.fill(0);
+        result.fill(T{});
         if (buffer.empty())
             return result;
         std::deque<T> tmpBuffer(buffer.begin(), buffer.end());
         std::sort(tmpBuffer.begin(), tmpBuffer.end());
         for (std::size_t i = 0; i < Size; ++i)
-            result[i] = tmpBuffer[(size_t)((tmpBuffer.size() - 1) * ((float)percentiles[i] / (float)100))];
+            result[i] = tmpBuffer[static_cast<size_t>((tmpBuffer.size() - 1) * (static_cast<double>(percentiles[i]) / 100.0))];
 
         return result;
     }
@@ -142,10 +142,11 @@ public:
         return buffer.empty();
     }
 
-    /// Set size of the buffer
+    /// Set size of the buffer (capped at 10000)
     void setSize(size_t size)
     {
-        bufferSize = size;
+        static constexpr size_t kMaxBufferSize = 10000;
+        bufferSize = std::min(size, kMaxBufferSize);
     }
 
     /// @return the raw buffer

@@ -348,8 +348,9 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
     }
     else
     {
-        double median_ms = static_cast<double>(session->rttMedian()) / 1000.0;
-        double p95_ms = static_cast<double>(session->rttPercentile(95)) / 1000.0;
+        auto pcts = session->rttPercentiles();
+        double median_ms = static_cast<double>(pcts[0]) / 1000.0;
+        double p95_ms = static_cast<double>(pcts[1]) / 1000.0;
         double jitter_ms = p95_ms - median_ms;
 
         // Suggested latency: negative value = increase buffer to absorb jitter.
