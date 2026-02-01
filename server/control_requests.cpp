@@ -327,7 +327,7 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
 {
     // clang-format off
     // Request:  {"id":9,"jsonrpc":"2.0","method":"Client.GetTimeStats","params":{"id":"00:21:6a:7d:74:fc"}}
-    // Response: {"id":9,"jsonrpc":"2.0","result":{"id":"00:21:6a:7d:74:fc","rtt_median_ms":3.2,"rtt_p95_ms":5.1,"jitter_ms":1.9,"samples":100,"suggested_latency_ms":-1}}
+    // Response: {"id":9,"jsonrpc":"2.0","result":{"id":"00:21:6a:7d:74:fc","latency_median_ms":3.2,"latency_p95_ms":5.1,"jitter_ms":1.9,"samples":100,"suggested_buffer_ms":-1}}
     // clang-format on
 
     std::ignore = authinfo;
@@ -338,23 +338,23 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
     Json result;
     result["id"] = client_info->id;
 
-    if (session == nullptr || session->rttSampleCount() == 0)
+    if (session == nullptr || session->latencySampleCount() == 0)
     {
-        result["rtt_median_ms"] = 0.0;
-        result["rtt_p95_ms"] = 0.0;
+        result["latency_median_ms"] = 0.0;
+        result["latency_p95_ms"] = 0.0;
         result["jitter_ms"] = 0.0;
         result["samples"] = 0;
-        result["suggested_latency_ms"] = 0;
+        result["suggested_buffer_ms"] = 0;
     }
     else
     {
         // pcts is a local copy (returned by value) — no lock held here
-        auto pcts = session->rttPercentiles(); // {p50, p95} in microseconds
+        auto pcts = session->latencyPercentiles(); // {p50, p95} in microseconds
         double median_ms = static_cast<double>(pcts[0]) / 1000.0;
         double p95_ms = static_cast<double>(pcts[1]) / 1000.0;
         double jitter_ms = p95_ms - median_ms;
 
-        // Suggested latency: negative value = client should increase its buffer.
+        // Suggested buffer increase: negative = client should increase its buffer.
         // 1.5x safety factor accounts for jitter variance; 2ms threshold avoids
         // suggesting changes for negligible jitter (typical LAN < 1ms).
         constexpr double kJitterSafetyFactor = 1.5;
@@ -363,11 +363,11 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
         if (jitter_ms > kJitterThresholdMs)
             suggested = -static_cast<int>(jitter_ms * kJitterSafetyFactor + 0.5);
 
-        result["rtt_median_ms"] = median_ms;
-        result["rtt_p95_ms"] = p95_ms;
+        result["latency_median_ms"] = median_ms;
+        result["latency_p95_ms"] = p95_ms;
         result["jitter_ms"] = jitter_ms;
-        result["samples"] = static_cast<size_t>(session->rttSampleCount());
-        result["suggested_latency_ms"] = suggested;
+        result["samples"] = static_cast<size_t>(session->latencySampleCount());
+        result["suggested_buffer_ms"] = suggested;
     }
 
     auto response = std::make_shared<jsonrpcpp::Response>(*request, result);
@@ -376,7 +376,7 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
 
 Request::Description ClientGetTimeStatsRequest::description() const
 {
-    return {"Get client RTT time statistics and suggested latency",
+    return {"Get client one-way latency statistics and suggested buffer",
             {{"id", Description::Type::string, "client id"}},
             {Description::Type::object, "RTT median, P95, jitter in ms, sample count, and suggested latency"}};
 }

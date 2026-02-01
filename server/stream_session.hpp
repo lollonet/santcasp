@@ -186,46 +186,46 @@ public:
     /// Authentication info attached to this session
     AuthInfo authinfo;
 
-    /// Add an RTT sample in microseconds
-    void addRttSample(int64_t rtt_usec)
+    /// Add a one-way latency sample in microseconds
+    void addLatencySample(int64_t delay_usec)
     {
-        std::lock_guard<std::mutex> lock(rttMutex_);
-        rttBuffer_.add(rtt_usec);
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        latencyBuffer_.add(delay_usec);
     }
 
-    /// @return number of RTT samples collected (thread-safe)
-    size_t rttSampleCount() const
+    /// @return number of latency samples collected (thread-safe)
+    size_t latencySampleCount() const
     {
-        std::lock_guard<std::mutex> lock(rttMutex_);
-        return rttBuffer_.size();
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.size();
     }
 
-    /// @return true if RTT buffer has enough samples for statistics (thread-safe)
-    bool hasRttStats() const
+    /// @return true if latency buffer has enough samples for statistics (thread-safe)
+    bool hasLatencyStats() const
     {
-        std::lock_guard<std::mutex> lock(rttMutex_);
-        return rttBuffer_.full();
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.full();
     }
 
-    /// @return RTT median and P95 in microseconds, single sort (thread-safe)
-    std::array<int64_t, 2> rttPercentiles() const
+    /// @return latency median and P95 in microseconds, single sort (thread-safe)
+    std::array<int64_t, 2> latencyPercentiles() const
     {
-        std::lock_guard<std::mutex> lock(rttMutex_);
-        return rttBuffer_.percentiles<2>({50, 95});
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.percentiles<2>({50, 95});
     }
 
-    /// @return RTT median in microseconds (thread-safe)
-    int64_t rttMedian() const
+    /// @return latency median in microseconds (thread-safe)
+    int64_t latencyMedian() const
     {
-        std::lock_guard<std::mutex> lock(rttMutex_);
-        return rttBuffer_.median();
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.median();
     }
 
-    /// @return RTT percentile in microseconds (thread-safe)
-    int64_t rttPercentile(unsigned int p) const
+    /// @return latency percentile in microseconds (thread-safe)
+    int64_t latencyPercentile(unsigned int p) const
     {
-        std::lock_guard<std::mutex> lock(rttMutex_);
-        return rttBuffer_.percentile(p);
+        std::lock_guard<std::mutex> lock(latencyMutex_);
+        return latencyBuffer_.percentile(p);
     }
 
 protected:
@@ -241,6 +241,6 @@ protected:
     boost::asio::strand<boost::asio::any_io_executor> strand_; ///< strand to sync IO on
     std::deque<shared_const_buffer> messages_;                 ///< messages to be sent
     mutable std::mutex mutex_;                                 ///< protect pcm_stream_
-    mutable std::mutex rttMutex_{};                             ///< protect rttBuffer_
-    DoubleBuffer<int64_t> rttBuffer_{100};                     ///< RTT samples (usec), 100 ≈ ~100s at 1 sample/s
+    mutable std::mutex latencyMutex_{};                          ///< protect latencyBuffer_
+    DoubleBuffer<int64_t> latencyBuffer_{100};                  ///< one-way latency samples (usec), 100 ≈ ~100s at 1 sample/s
 };
