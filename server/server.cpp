@@ -33,6 +33,7 @@
 
 // standard headers
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 
@@ -280,12 +281,15 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
         streamSession->send(timeMsg);
 
         // Accumulate RTT sample for time statistics.
-        // Cap at 10s — anything above is bogus (network glitch or clock skew).
-        if (timeMsg->latency.sec >= 0 && timeMsg->latency.sec < 10 &&
-            timeMsg->latency.usec >= 0 && timeMsg->latency.usec < 1000000)
+        // latency = received - sent is one-way delay, which can be negative when
+        // client clock is ahead of server (common with NTP skew). Use absolute
+        // value as a proxy for one-way latency regardless of clock direction.
+        // Cap at 10s — anything above is bogus (network glitch or extreme skew).
         {
-            int64_t rtt_usec = static_cast<int64_t>(timeMsg->latency.sec) * 1000000 + timeMsg->latency.usec;
-            streamSession->addRttSample(rtt_usec);
+            int64_t one_way_usec = static_cast<int64_t>(timeMsg->latency.sec) * 1000000 + timeMsg->latency.usec;
+            int64_t rtt_usec = std::abs(one_way_usec);
+            if (rtt_usec < 10'000'000)
+                streamSession->addRttSample(rtt_usec);
         }
 
         // Log RTT stats periodically. Snapcast sends ~1 time message/sec,
