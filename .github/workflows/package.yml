@@ -2,6 +2,9 @@ name: Package
 run-name: Package ${{ github.sha }} by @${{ github.actor }}
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
