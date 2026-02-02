@@ -327,7 +327,7 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
 {
     // clang-format off
     // Request:  {"id":9,"jsonrpc":"2.0","method":"Client.GetTimeStats","params":{"id":"00:21:6a:7d:74:fc"}}
-    // Response: {"id":9,"jsonrpc":"2.0","result":{"id":"00:21:6a:7d:74:fc","latency_median_ms":3.2,"latency_p95_ms":5.1,"jitter_ms":1.9,"samples":100,"suggested_buffer_ms":-1}}
+    // Response: {"id":9,"jsonrpc":"2.0","result":{"id":"00:21:6a:7d:74:fc","jitter_median_ms":0.4,"jitter_p95_ms":1.2,"samples":99,"suggested_buffer_ms":0}}
     // clang-format on
 
     std::ignore = authinfo;
@@ -340,32 +340,30 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
 
     if (session == nullptr || session->latencySampleCount() == 0)
     {
-        result["latency_median_ms"] = 0.0;
-        result["latency_p95_ms"] = 0.0;
-        result["jitter_ms"] = 0.0;
+        result["jitter_median_ms"] = 0.0;
+        result["jitter_p95_ms"] = 0.0;
         result["samples"] = 0;
         result["suggested_buffer_ms"] = 0;
     }
     else
     {
-        // pcts is a local copy (returned by value) — no lock held here
+        // pcts contains |IPDV| percentiles (inter-packet delay variation).
+        // Clock offsets cancel in IPDV — these are true network jitter values.
         auto pcts = session->latencyPercentiles(); // {p50, p95} in microseconds
         double median_ms = static_cast<double>(pcts[0]) / 1000.0;
         double p95_ms = static_cast<double>(pcts[1]) / 1000.0;
-        double jitter_ms = p95_ms - median_ms;
 
         // Suggested buffer increase: negative = client should increase its buffer.
-        // 1.5x safety factor accounts for jitter variance; 2ms threshold avoids
+        // Based on p95 jitter with 1.5x safety factor; 2ms threshold avoids
         // suggesting changes for negligible jitter (typical LAN < 1ms).
         constexpr double kJitterSafetyFactor = 1.5;
         constexpr double kJitterThresholdMs = 2.0;
         int suggested = 0;
-        if (jitter_ms > kJitterThresholdMs)
-            suggested = -static_cast<int>(jitter_ms * kJitterSafetyFactor + 0.5);
+        if (p95_ms > kJitterThresholdMs)
+            suggested = -static_cast<int>(p95_ms * kJitterSafetyFactor + 0.5);
 
-        result["latency_median_ms"] = median_ms;
-        result["latency_p95_ms"] = p95_ms;
-        result["jitter_ms"] = jitter_ms;
+        result["jitter_median_ms"] = median_ms;
+        result["jitter_p95_ms"] = p95_ms;
         result["samples"] = static_cast<size_t>(session->latencySampleCount());
         result["suggested_buffer_ms"] = suggested;
     }
@@ -376,9 +374,9 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
 
 Request::Description ClientGetTimeStatsRequest::description() const
 {
-    return {"Get client one-way latency statistics and suggested buffer",
+    return {"Get client network jitter statistics (IPDV) and suggested buffer",
             {{"id", Description::Type::string, "client id"}},
-            {Description::Type::object, "Latency median, P95, jitter in ms, sample count, and suggested buffer"}};
+            {Description::Type::object, "Jitter median, P95 in ms, sample count, and suggested buffer"}};
 }
 
 

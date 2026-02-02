@@ -280,35 +280,24 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
         // "\n";
         streamSession->send(timeMsg);
 
-        // Collect one-way latency sample for time statistics.
-        // latency = received - sent can be negative when client clock is ahead
-        // of server (common with NTP skew). Use absolute value as the magnitude
-        // of the timestamp delta. Note: this is NOT true RTT — it includes clock
-        // offset. True RTT would require a full client→server→client round trip.
-        // Cap at 10s — anything above is bogus (network glitch or extreme skew).
-        int64_t one_way_usec = static_cast<int64_t>(timeMsg->latency.sec) * 1000000LL + timeMsg->latency.usec;
-        int64_t delay_usec = std::abs(one_way_usec);
-        LOG(INFO, LOG_TAG) << "TimeSync client=" << streamSession->clientId
-                           << " sec=" << timeMsg->latency.sec << " usec=" << timeMsg->latency.usec
-                           << " one_way=" << one_way_usec << " delay=" << delay_usec
-                           << " samples=" << streamSession->latencySampleCount() << "\n";
-        if (delay_usec < 10'000'000)
-            streamSession->addLatencySample(delay_usec);
+        // Collect inter-packet delay variation (IPDV) jitter sample.
+        // D = (recv_delta) - (sent_delta) between consecutive Time messages.
+        // Clock offsets cancel in the subtraction (RFC 3550 §6.4.1).
+        int64_t recv_usec = static_cast<int64_t>(timeMsg->received.sec) * 1000000LL + timeMsg->received.usec;
+        int64_t sent_usec = static_cast<int64_t>(timeMsg->sent.sec) * 1000000LL + timeMsg->sent.usec;
+        streamSession->addJitterSample(recv_usec, sent_usec);
 
-        // Log latency stats periodically. Snapcast sends ~1 time message/sec,
-        // so 60 samples ≈ 1 log line per minute per client.
+        // Log jitter stats periodically (~1 time msg/sec, 60 samples ≈ 1 log/min).
         constexpr size_t kLogInterval = 60;
         size_t sample_count = streamSession->latencySampleCount();
         if (sample_count > 0 && sample_count % kLogInterval == 0)
         {
             auto pcts = streamSession->latencyPercentiles();
-            double median_ms = static_cast<double>(pcts[0]) / 1000.0;
+            double mean_ms = static_cast<double>(pcts[0]) / 1000.0;
             double p95_ms = static_cast<double>(pcts[1]) / 1000.0;
-            double jitter_ms = p95_ms - median_ms;
-            LOG(DEBUG, LOG_TAG) << "TimeStats client=" << streamSession->clientId
-                                << " latency median=" << median_ms << "ms"
+            LOG(DEBUG, LOG_TAG) << "Jitter client=" << streamSession->clientId
+                                << " median=" << mean_ms << "ms"
                                 << " p95=" << p95_ms << "ms"
-                                << " jitter=" << jitter_ms << "ms"
                                 << " samples=" << sample_count << "\n";
         }
 

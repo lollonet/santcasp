@@ -186,11 +186,22 @@ public:
     /// Authentication info attached to this session
     AuthInfo authinfo;
 
-    /// Add a one-way latency sample in microseconds
-    void addLatencySample(int64_t delay_usec)
+    /// Add a jitter sample from inter-packet delay variation (IPDV).
+    /// D = (recv_delta) - (sent_delta) between consecutive Time messages.
+    /// Clock offsets cancel in the subtraction (RFC 3550 §6.4.1).
+    void addJitterSample(int64_t recv_usec, int64_t sent_usec)
     {
         std::lock_guard<std::mutex> lock(latencyMutex_);
-        latencyBuffer_.add(delay_usec);
+        if (hasPrevTimestamps_)
+        {
+            int64_t recv_delta = recv_usec - prevRecvUsec_;
+            int64_t sent_delta = sent_usec - prevSentUsec_;
+            int64_t ipdv = std::abs(recv_delta - sent_delta);
+            latencyBuffer_.add(ipdv);
+        }
+        prevRecvUsec_ = recv_usec;
+        prevSentUsec_ = sent_usec;
+        hasPrevTimestamps_ = true;
     }
 
     /// @return number of latency samples collected (thread-safe)
@@ -241,6 +252,9 @@ protected:
     boost::asio::strand<boost::asio::any_io_executor> strand_; ///< strand to sync IO on
     std::deque<shared_const_buffer> messages_;                 ///< messages to be sent
     mutable std::mutex mutex_;                                 ///< protect pcm_stream_
-    mutable std::mutex latencyMutex_{};                          ///< protect latencyBuffer_
-    DoubleBuffer<int64_t> latencyBuffer_{100};                  ///< one-way latency samples (usec), 100 ≈ ~100s at 1 sample/s
+    mutable std::mutex latencyMutex_{};                          ///< protect jitter members
+    DoubleBuffer<int64_t> latencyBuffer_{100};                  ///< |IPDV| samples (usec), 100 ≈ ~100s at 1 sample/s
+    int64_t prevRecvUsec_{0};                                    ///< previous server receive timestamp (usec)
+    int64_t prevSentUsec_{0};                                    ///< previous client send timestamp (usec)
+    bool hasPrevTimestamps_{false};                              ///< true after first Time message
 };
