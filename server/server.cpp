@@ -288,6 +288,10 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
         // Cap at 10s — anything above is bogus (network glitch or extreme skew).
         int64_t one_way_usec = static_cast<int64_t>(timeMsg->latency.sec) * 1000000LL + timeMsg->latency.usec;
         int64_t delay_usec = std::abs(one_way_usec);
+        LOG(INFO, LOG_TAG) << "TimeSync client=" << streamSession->clientId
+                           << " sec=" << timeMsg->latency.sec << " usec=" << timeMsg->latency.usec
+                           << " one_way=" << one_way_usec << " delay=" << delay_usec
+                           << " samples=" << streamSession->latencySampleCount() << "\n";
         if (delay_usec < 10'000'000)
             streamSession->addLatencySample(delay_usec);
 
