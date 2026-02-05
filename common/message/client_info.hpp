@@ -67,6 +67,16 @@ public:
     {
         msg["muted"] = muted;
     }
+
+    // Audio-path jitter stats (optional, backward-compatible)
+    void setJitterMedianUs(int64_t us) { msg["jitter_median_us"] = us; }
+    void setJitterP95Us(int64_t us) { msg["jitter_p95_us"] = us; }
+    void setJitterSamples(uint32_t n) { msg["jitter_samples"] = n; }
+
+    int64_t getJitterMedianUs() { return get("jitter_median_us", int64_t{-1}); }
+    int64_t getJitterP95Us() { return get("jitter_p95_us", int64_t{-1}); }
+    uint32_t getJitterSamples() { return get("jitter_samples", uint32_t{0}); }
+    bool hasJitterStats() { return msg.count("jitter_samples") > 0; }
 };
 
 } // namespace msg

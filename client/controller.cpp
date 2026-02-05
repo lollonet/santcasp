@@ -199,6 +199,21 @@ void Controller::getNextMessage()
 
         if (response->type == message_type::kWireChunk)
         {
+            // Compute IPDV on audio chunk arrivals
+            {
+                int64_t recv_usec = int64_t(response->received.sec) * 1000000LL + response->received.usec;
+                int64_t sent_usec = int64_t(response->sent.sec) * 1000000LL + response->sent.usec;
+                if (hasPrevChunkTimestamps_)
+                {
+                    int64_t recv_delta = recv_usec - prevChunkRecvUsec_;
+                    int64_t sent_delta = sent_usec - prevChunkSentUsec_;
+                    chunkJitterBuffer_.add(std::abs(recv_delta - sent_delta));
+                }
+                prevChunkRecvUsec_ = recv_usec;
+                prevChunkSentUsec_ = sent_usec;
+                hasPrevChunkTimestamps_ = true;
+            }
+
             if (stream_ && decoder_)
             {
                 // execute on the io_context to do the (costly) decoding on another thread (if more than one thread is used)
@@ -232,6 +247,11 @@ void Controller::getNextMessage()
             decoder_.reset(nullptr);
             stream_ = nullptr;
             player_.reset(nullptr);
+
+            // Reset audio jitter tracking for new stream
+            hasPrevChunkTimestamps_ = false;
+            chunkJitterBuffer_.clear();
+            jitterReportCounter_ = 0;
 
             if (headerChunk_->codec == "pcm")
                 decoder_ = make_unique<decoder::PcmDecoder>();
@@ -301,6 +321,7 @@ void Controller::getNextMessage()
             {
                 // Cache the last volume and check if it really changed in the player's volume callback
                 static Player::Volume last_volume{-1, true};
+                cachedVolume_ = volume;
                 if (volume != last_volume)
                 {
                     last_volume = volume;
@@ -355,6 +376,21 @@ void Controller::sendTimeSyncMessage(int quick_syncs)
         else
         {
             TimeProvider::getInstance().setDiff(response->latency, response->received - response->sent);
+        }
+
+        // Report audio-path jitter to the server periodically
+        constexpr uint32_t kJitterReportInterval = 5;
+        if (++jitterReportCounter_ >= kJitterReportInterval && chunkJitterBuffer_.size() >= 50)
+        {
+            jitterReportCounter_ = 0;
+            auto pcts = chunkJitterBuffer_.percentiles<2>({50, 95});
+            auto info = std::make_shared<msg::ClientInfo>();
+            info->setVolume(static_cast<uint16_t>(cachedVolume_.volume * 100.));
+            info->setMuted(cachedVolume_.mute);
+            info->setJitterMedianUs(pcts[0]);
+            info->setJitterP95Us(pcts[1]);
+            info->setJitterSamples(static_cast<uint32_t>(chunkJitterBuffer_.size()));
+            clientConnection_->send(info, nullptr);
         }
 
         std::chrono::microseconds next = TIME_SYNC_INTERVAL;
@@ -469,6 +505,9 @@ void Controller::reconnect()
     player_.reset();
     stream_.reset();
     decoder_.reset();
+    hasPrevChunkTimestamps_ = false;
+    chunkJitterBuffer_.clear();
+    jitterReportCounter_ = 0;
     timer_.expires_after(1s);
     timer_.async_wait([this](const boost::system::error_code& ec)
     {

@@ -21,6 +21,7 @@
 // local headers
 #include "client_connection.hpp"
 #include "client_settings.hpp"
+#include "common/double_buffer.hpp"
 #include "common/message/server_settings.hpp"
 #include "decoder/decoder.hpp"
 #include "player/player.hpp"
@@ -76,4 +77,12 @@ private:
     std::unique_ptr<player::Player> player_;
     std::unique_ptr<msg::ServerSettings> serverSettings_;
     std::unique_ptr<msg::CodecHeader> headerChunk_;
+
+    // Audio chunk IPDV tracking
+    DoubleBuffer<int64_t> chunkJitterBuffer_{200}; // ~8s at 25Hz
+    int64_t prevChunkRecvUsec_{0};
+    int64_t prevChunkSentUsec_{0};
+    bool hasPrevChunkTimestamps_{false};
+    uint32_t jitterReportCounter_{0};
+    player::Player::Volume cachedVolume_{1.0, false};
 };

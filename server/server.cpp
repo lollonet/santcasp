@@ -320,11 +320,21 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
         msg::ClientInfo infoMsg;
         infoMsg.deserialize(baseMessage, buffer);
 
+        // Only broadcast volume change if it actually changed (avoid spam from jitter reports)
+        auto old_percent = clientInfo->config.volume.percent;
+        auto old_muted = clientInfo->config.volume.muted;
         clientInfo->config.volume.percent = infoMsg.getVolume();
         clientInfo->config.volume.muted = infoMsg.isMuted();
-        jsonrpcpp::notification_ptr notification = make_shared<jsonrpcpp::Notification>(
-            "Client.OnVolumeChanged", jsonrpcpp::Parameter("id", streamSession->clientId, "volume", clientInfo->config.volume.toJson()));
-        controlServer_->send(notification->to_json().dump());
+        if (old_percent != clientInfo->config.volume.percent || old_muted != clientInfo->config.volume.muted)
+        {
+            jsonrpcpp::notification_ptr notification = make_shared<jsonrpcpp::Notification>(
+                "Client.OnVolumeChanged", jsonrpcpp::Parameter("id", streamSession->clientId, "volume", clientInfo->config.volume.toJson()));
+            controlServer_->send(notification->to_json().dump());
+        }
+
+        // Store client-reported audio jitter stats
+        if (infoMsg.hasJitterStats())
+            streamSession->setClientJitter(infoMsg.getJitterMedianUs(), infoMsg.getJitterP95Us(), infoMsg.getJitterSamples());
     }
     else if (baseMessage.type == message_type::kHello)
     {

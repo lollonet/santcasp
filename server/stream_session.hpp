@@ -186,6 +186,28 @@ public:
     /// Authentication info attached to this session
     AuthInfo authinfo;
 
+    /// Client-reported audio-path jitter (from ClientInfo)
+    struct ClientJitter
+    {
+        double median_ms{0.0};
+        double p95_ms{0.0};
+        uint32_t samples{0};
+    };
+
+    void setClientJitter(int64_t median_us, int64_t p95_us, uint32_t samples)
+    {
+        std::lock_guard<std::mutex> lock(clientJitterMutex_);
+        clientJitter_.median_ms = static_cast<double>(median_us) / 1000.0;
+        clientJitter_.p95_ms = static_cast<double>(p95_us) / 1000.0;
+        clientJitter_.samples = samples;
+    }
+
+    ClientJitter clientJitter() const
+    {
+        std::lock_guard<std::mutex> lock(clientJitterMutex_);
+        return clientJitter_;
+    }
+
     /// Add a jitter sample from inter-packet delay variation (IPDV).
     /// D = (recv_delta) - (sent_delta) between consecutive Time messages.
     /// Clock offsets cancel in the subtraction (RFC 3550 §6.4.1).
@@ -252,6 +274,8 @@ protected:
     boost::asio::strand<boost::asio::any_io_executor> strand_; ///< strand to sync IO on
     std::deque<shared_const_buffer> messages_;                 ///< messages to be sent
     mutable std::mutex mutex_;                                 ///< protect pcm_stream_
+    mutable std::mutex clientJitterMutex_{};                       ///< protect client-reported jitter
+    ClientJitter clientJitter_{};                                    ///< client-reported audio-path jitter
     mutable std::mutex latencyMutex_{};                          ///< protect jitter members
     DoubleBuffer<int64_t> latencyBuffer_{100};                  ///< |IPDV| samples (usec), 100 ≈ ~100s at 1 sample/s
     int64_t prevRecvUsec_{0};                                    ///< previous server receive timestamp (usec)
