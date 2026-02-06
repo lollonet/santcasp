@@ -201,12 +201,13 @@ void Controller::getNextMessage()
         {
             // Compute IPDV on audio chunk arrivals
             {
-                int64_t recv_usec = int64_t(response->received.sec) * 1000000LL + response->received.usec;
-                int64_t sent_usec = int64_t(response->sent.sec) * 1000000LL + response->sent.usec;
+                int64_t recv_usec = static_cast<int64_t>(response->received.sec) * 1000000LL + response->received.usec;
+                int64_t sent_usec = static_cast<int64_t>(response->sent.sec) * 1000000LL + response->sent.usec;
                 if (hasPrevChunkTimestamps_)
                 {
                     int64_t recv_delta = recv_usec - prevChunkRecvUsec_;
                     int64_t sent_delta = sent_usec - prevChunkSentUsec_;
+                    std::lock_guard<std::mutex> lock(jitterMutex_);
                     chunkJitterBuffer_.add(std::abs(recv_delta - sent_delta));
                 }
                 prevChunkRecvUsec_ = recv_usec;
@@ -250,7 +251,10 @@ void Controller::getNextMessage()
 
             // Reset audio jitter tracking for new stream
             hasPrevChunkTimestamps_ = false;
-            chunkJitterBuffer_.clear();
+            {
+                std::lock_guard<std::mutex> lock(jitterMutex_);
+                chunkJitterBuffer_.clear();
+            }
             jitterReportCounter_ = 0;
 
             if (headerChunk_->codec == "pcm")
@@ -380,17 +384,21 @@ void Controller::sendTimeSyncMessage(int quick_syncs)
 
         // Report audio-path jitter to the server periodically
         constexpr uint32_t kJitterReportInterval = 5;
-        if (++jitterReportCounter_ >= kJitterReportInterval && chunkJitterBuffer_.size() >= 50)
+        if (++jitterReportCounter_ >= kJitterReportInterval)
         {
-            jitterReportCounter_ = 0;
-            auto pcts = chunkJitterBuffer_.percentiles<2>({50, 95});
-            auto info = std::make_shared<msg::ClientInfo>();
-            info->setVolume(static_cast<uint16_t>(cachedVolume_.volume * 100.));
-            info->setMuted(cachedVolume_.mute);
-            info->setJitterMedianUs(pcts[0]);
-            info->setJitterP95Us(pcts[1]);
-            info->setJitterSamples(static_cast<uint32_t>(chunkJitterBuffer_.size()));
-            clientConnection_->send(info, nullptr);
+            std::lock_guard<std::mutex> lock(jitterMutex_);
+            if (chunkJitterBuffer_.size() >= 50)
+            {
+                jitterReportCounter_ = 0;
+                auto pcts = chunkJitterBuffer_.percentiles<2>({50, 95});
+                auto info = std::make_shared<msg::ClientInfo>();
+                info->setVolume(static_cast<uint16_t>(cachedVolume_.volume * 100.));
+                info->setMuted(cachedVolume_.mute);
+                info->setJitterMedianUs(pcts[0]);
+                info->setJitterP95Us(pcts[1]);
+                info->setJitterSamples(static_cast<uint32_t>(chunkJitterBuffer_.size()));
+                clientConnection_->send(info, nullptr);
+            }
         }
 
         std::chrono::microseconds next = TIME_SYNC_INTERVAL;
@@ -506,7 +514,10 @@ void Controller::reconnect()
     stream_.reset();
     decoder_.reset();
     hasPrevChunkTimestamps_ = false;
-    chunkJitterBuffer_.clear();
+    {
+        std::lock_guard<std::mutex> lock(jitterMutex_);
+        chunkJitterBuffer_.clear();
+    }
     jitterReportCounter_ = 0;
     timer_.expires_after(1s);
     timer_.async_wait([this](const boost::system::error_code& ec)

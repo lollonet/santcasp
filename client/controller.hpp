@@ -22,6 +22,9 @@
 #include "client_connection.hpp"
 #include "client_settings.hpp"
 #include "common/double_buffer.hpp"
+
+// standard headers
+#include <mutex>
 #include "common/message/server_settings.hpp"
 #include "decoder/decoder.hpp"
 #include "player/player.hpp"
@@ -79,7 +82,8 @@ private:
     std::unique_ptr<msg::CodecHeader> headerChunk_;
 
     // Audio chunk IPDV tracking
-    DoubleBuffer<int64_t> chunkJitterBuffer_{200}; // ~8s at 25Hz
+    mutable std::mutex jitterMutex_;                  // protects chunkJitterBuffer_
+    DoubleBuffer<int64_t> chunkJitterBuffer_{200};    // ~8s at 25Hz
     int64_t prevChunkRecvUsec_{0};
     int64_t prevChunkSentUsec_{0};
     bool hasPrevChunkTimestamps_{false};
