@@ -386,18 +386,21 @@ void Controller::sendTimeSyncMessage(int quick_syncs)
         constexpr uint32_t kJitterReportInterval = 5;
         if (++jitterReportCounter_ >= kJitterReportInterval)
         {
-            std::lock_guard<std::mutex> lock(jitterMutex_);
-            if (chunkJitterBuffer_.size() >= 50)
+            jitterReportCounter_ = 0;  // always reset, regardless of buffer fill level
+            if (serverSettings_)       // guard: ensures cachedVolume_ reflects real server state
             {
-                jitterReportCounter_ = 0;
-                auto pcts = chunkJitterBuffer_.percentiles<2>({50, 95});
-                auto info = std::make_shared<msg::ClientInfo>();
-                info->setVolume(static_cast<uint16_t>(cachedVolume_.volume * 100.));
-                info->setMuted(cachedVolume_.mute);
-                info->setJitterMedianUs(pcts[0]);
-                info->setJitterP95Us(pcts[1]);
-                info->setJitterSamples(static_cast<uint32_t>(chunkJitterBuffer_.size()));
-                clientConnection_->send(info, nullptr);
+                std::lock_guard<std::mutex> lock(jitterMutex_);
+                if (chunkJitterBuffer_.size() >= 50)
+                {
+                    auto pcts = chunkJitterBuffer_.percentiles<2>({50, 95});
+                    auto info = std::make_shared<msg::ClientInfo>();
+                    info->setVolume(static_cast<uint16_t>(cachedVolume_.volume * 100.));
+                    info->setMuted(cachedVolume_.mute);
+                    info->setJitterMedianUs(pcts[0]);
+                    info->setJitterP95Us(pcts[1]);
+                    info->setJitterSamples(static_cast<uint32_t>(chunkJitterBuffer_.size()));
+                    clientConnection_->send(info, nullptr);
+                }
             }
         }
 

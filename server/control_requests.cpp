@@ -339,6 +339,7 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
     result["id"] = client_info->id;
 
     // Server-measured control-path jitter (Time messages, ~1Hz)
+    std::array<int64_t, 2> control_pcts{};
     if (session == nullptr || session->latencySampleCount() == 0)
     {
         result["control_jitter_median_ms"] = 0.0;
@@ -347,25 +348,24 @@ void ClientGetTimeStatsRequest::execute(const jsonrpcpp::request_ptr& request, A
     }
     else
     {
-        auto pcts = session->latencyPercentiles(); // {p50, p95} in microseconds
-        result["control_jitter_median_ms"] = static_cast<double>(pcts[0]) / 1000.0;
-        result["control_jitter_p95_ms"] = static_cast<double>(pcts[1]) / 1000.0;
+        control_pcts = session->latencyPercentiles(); // {p50, p95} in microseconds
+        result["control_jitter_median_ms"] = static_cast<double>(control_pcts[0]) / 1000.0;
+        result["control_jitter_p95_ms"] = static_cast<double>(control_pcts[1]) / 1000.0;
         result["control_samples"] = static_cast<size_t>(session->latencySampleCount());
     }
 
-    // Client-reported audio-path jitter (WireChunks, ~25Hz)
+    // Client-reported audio-path jitter (WireChunks, ~50Hz)
     auto cj = session ? session->clientJitter() : StreamSession::ClientJitter{};
     result["audio_jitter_median_ms"] = cj.median_ms;
     result["audio_jitter_p95_ms"] = cj.p95_ms;
     result["audio_samples"] = cj.samples;
 
     // Suggested buffer: prefer audio jitter (real data path) when available,
-    // fall back to control-path jitter.
+    // fall back to control-path jitter. Informational — negative means buffer too small.
     constexpr double kJitterSafetyFactor = 1.5;
     constexpr double kJitterThresholdMs = 2.0;
     int suggested = 0;
-    double p95_for_buffer = cj.samples > 0 ? cj.p95_ms
-                                            : (session ? static_cast<double>(session->latencyPercentiles()[1]) / 1000.0 : 0.0);
+    double p95_for_buffer = cj.samples > 0 ? cj.p95_ms : static_cast<double>(control_pcts[1]) / 1000.0;
     if (p95_for_buffer > kJitterThresholdMs)
         suggested = -static_cast<int>(p95_for_buffer * kJitterSafetyFactor + 0.5);
     result["suggested_buffer_ms"] = suggested;
