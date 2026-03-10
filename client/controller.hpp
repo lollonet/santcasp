@@ -83,7 +83,7 @@ private:
 
     // Audio chunk IPDV tracking
     mutable std::mutex jitterMutex_;                  // protects chunkJitterBuffer_
-    DoubleBuffer<int64_t> chunkJitterBuffer_{200};    // ~8s at 25Hz
+    DoubleBuffer<int64_t> chunkJitterBuffer_{200};    // ~4s at 50Hz
     int64_t prevChunkRecvUsec_{0};
     int64_t prevChunkSentUsec_{0};
     bool hasPrevChunkTimestamps_{false};
