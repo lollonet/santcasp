@@ -199,10 +199,16 @@ void Controller::getNextMessage()
 
         if (response->type == message_type::kWireChunk)
         {
-            // Compute IPDV on audio chunk arrivals
+            // Cast first so we can access the audio timestamp for IPDV
+            auto pcmChunk = msg::message_cast<msg::PcmChunk>(std::move(response));
+
+            // Compute IPDV on audio chunk arrivals.
+            // Use the audio playout timestamp (perfectly spaced at chunk_ms intervals)
+            // as the "sent" reference instead of the base message sent field, which is
+            // set once at serialization time and identical for all clients.
             {
-                int64_t recv_usec = static_cast<int64_t>(response->received.sec) * 1000000LL + response->received.usec;
-                int64_t sent_usec = static_cast<int64_t>(response->sent.sec) * 1000000LL + response->sent.usec;
+                int64_t recv_usec = static_cast<int64_t>(pcmChunk->received.sec) * 1000000LL + pcmChunk->received.usec;
+                int64_t sent_usec = static_cast<int64_t>(pcmChunk->timestamp.sec) * 1000000LL + pcmChunk->timestamp.usec;
                 if (hasPrevChunkTimestamps_)
                 {
                     int64_t recv_delta = recv_usec - prevChunkRecvUsec_;
@@ -217,9 +223,6 @@ void Controller::getNextMessage()
 
             if (stream_ && decoder_)
             {
-                // execute on the io_context to do the (costly) decoding on another thread (if more than one thread is used)
-                // boost::asio::post(io_context_, [this, response = std::move(response)]() mutable {
-                auto pcmChunk = msg::message_cast<msg::PcmChunk>(std::move(response));
                 pcmChunk->format = sampleFormat_;
                 // LOG(TRACE, LOG_TAG) << "chunk: " << pcmChunk->payloadSize << ", sampleFormat: " << sampleFormat_.toString() << "\n";
                 if (decoder_->decode(pcmChunk.get()))
