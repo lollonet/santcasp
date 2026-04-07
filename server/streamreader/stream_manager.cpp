@@ -79,7 +79,8 @@ PcmStreamPtr StreamManager::addStream(StreamUri& streamUri, PcmStream::Source so
     if (streamUri.query.find(kUriChunkMs) == streamUri.query.end())
         streamUri.query[kUriChunkMs] = cpt::to_string(settings_.stream.streamChunkMs);
 
-    auto name = streamUri.query[kUriName];
+    auto name_it = streamUri.query.find(kUriName);
+    auto name = (name_it != streamUri.query.end()) ? name_it->second : std::string{};
     if (name.empty())
         throw SnapException("Stream name must not be empty");
 
@@ -176,7 +177,7 @@ bool StreamManager::removeStream(const std::string& name)
     {
         (*iter)->stop();
         streams_.erase(iter);
-        LOG(DEBUG, LOG_TAG) << "Found and removed stream '" << (*iter)->getName() << "'\n";
+        LOG(DEBUG, LOG_TAG) << "Found and removed stream '" << name << "'\n";
         return true;
     }
     else
@@ -211,6 +212,8 @@ const PcmStreamPtr StreamManager::getDefaultStream() const
                 return stream;
         }
     }
+    if (default_source.has_value())
+        LOG(WARNING, LOG_TAG) << "Configured default_source '" << default_source.value() << "' not found among remaining streams, falling back\n";
     return firstValidStream;
 }
 

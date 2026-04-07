@@ -48,9 +48,9 @@ StreamControl::StreamControl(const boost::asio::any_io_executor& executor) : exe
 void StreamControl::start(const std::string& stream_id, const ServerSettings& server_setttings, OnNotification&& notification_handler,
                           OnRequest&& request_handler, OnLog&& log_handler)
 {
-    notification_handler_ = notification_handler;
-    request_handler_ = request_handler;
-    log_handler_ = log_handler;
+    notification_handler_ = std::move(notification_handler);
+    request_handler_ = std::move(request_handler);
+    log_handler_ = std::move(log_handler);
 
     doStart(stream_id, server_setttings);
 }
