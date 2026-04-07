@@ -35,7 +35,7 @@ Supported parameters for all source types:
 - `codec`: Override the global codec
 - `sampleformat`: Override the global sample format
 - `chunk_ms`: Override the global `chunk_ms`
-- `controlscript`: Script to control the stream source and read and provide meta data, see [stream_plugin.md](json_rpc_api/stream_plugin.md)
+- `controlscript`: Script to control the stream source and read and provide meta data, see [stream_plugin.md](repos/santcasp/doc/json_rpc_api/stream_plugin.md)
 - `controlscriptparams`: Control script command line arguments, must be url-encoded (use `%20` instead of a space " "), e.g. `--mopidy-host=192.168.42.23%20--debug`
 
 Available audio source types are:
@@ -308,7 +308,7 @@ The output of any audio player that uses alsa can be redirected to Snapcast by u
 
 ### pipewire
 
-Direct audio capture from PipeWire, see the [PipeWire Stream Usage Guide](pipewire-stream.md)
+Direct audio capture from PipeWire, see the [PipeWire Stream Usage Guide](repos/santcasp/doc/pipewire-stream.md)
 
 ### jack
 
