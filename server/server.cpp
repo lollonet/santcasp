@@ -422,6 +422,11 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
         if (!stream)
         {
             stream = streamManager_->getDefaultStream();
+            if (!stream)
+            {
+                LOG(WARNING, LOG_TAG) << "No streams available for client " << streamSession->clientId << "\n";
+                return;
+            }
             group->streamId = stream->getId();
         }
         LOG(DEBUG, LOG_TAG) << "Group: " << group->id << ", stream: " << group->streamId << "\n";
@@ -504,6 +509,10 @@ void Server::start()
             if (stream)
                 LOG(INFO, LOG_TAG) << "Stream: " << stream->getUri().toJson() << "\n";
         }
+
+        // Validate the default source if set
+        if (settings_.stream.default_source.has_value() && streamManager_->getStream(settings_.stream.default_source.value()) == nullptr)
+            throw SnapException("Default stream source: '" + settings_.stream.default_source.value() + "' not found");
 
         streamManager_->start();
         controlServer_->start();

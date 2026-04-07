@@ -1,24 +1,68 @@
 # Snapcast changelog
 
+## Version 0.34.1 (santcasp)
+
+### Features
+
+- Server: Add per-client one-way latency tracking (median/p95) via Time messages; expose via `Client.GetTimeStats` JSON-RPC (PR #1, #3)
+- Server: `Client.GetTimeStats` returns control-path jitter (Time msgs, ~1 Hz) and audio-path IPDV jitter (WireChunks, ~50 Hz), plus informational `suggested_buffer_ms` (PR #5)
+- Client: Measure IPDV (Inter-Packet Delay Variation) on audio WireChunks at ~50 Hz and report median/p95 via `ClientInfo` every 5 time-sync cycles (PR #5)
+- Client: Add optional `jitter_median_us`, `jitter_p95_us`, `jitter_samples` fields to `ClientInfo` message (backward-compatible) (PR #5)
+- Docs: Add iOS and Android client implementation guides for IPDV jitter measurement (`doc/client/`)
+
+### Bugfixes
+
+- Fix negative latency values caused by NTP clock skew: use `std::abs()` on one-way delay; rename RTT → latency throughout (PR #3)
+- Fix `jitterReportCounter_` not resetting when buffer too small — counter now always resets to prevent drift of the reporting interval (PR #6)
+- Fix `cachedVolume_` race: guard jitter reporting behind `serverSettings_` check so volume reflects actual server state before first report (PR #6)
+- Fix double `latencyPercentiles()` call: hoist control percentiles to a single sort, reuse result for `suggested_buffer_ms` fallback (PR #6)
+
+### General
+
+- CI: Add Claude Code automated PR review workflow (severity-based: critical/major/minor)
+- CI: Use full git history for accurate `git diff` against base branch
+- CI: Fix Claude review hitting max-turns and permission denial (max-turns 15→20, correct MCP tool name) (PR #6)
+- Build: Add Dockerfiles, build tooling, `.gitignore`
+- Build: Remove `-santcasp` version suffix for CMake 4.x compatibility
+
+### Contributors
+
+- @lollonet
+
+_2026-03-10_
+
 ## Version 0.35.0
 
 ### Features
 
 - Client: Add SDL2 player for better portability (PR #1460)
+- Server: Add option for a default source (PR #1494, Issue #1316)
 
 ### Bugfixes
+
+- Server: End control script when Stream.RemoveStream is called (Issue #1455)
+- Server: Close TCP server when Stream.RemoveStream is called (Issue #1497)
 
 ### General
 
 - CI: remove gcc-9
 - Move project to https://github.com/snapcast/snapcast (Issue #1458)
+- Doc: Update README with Snapclient for ESP32 details (PR #1468, Issue #1501)
+- Doc: Update README with snapmixer (CLI volume control) details (PR #1490)
+- Doc: Include correct samplerate in the go-librespot example (PR #1504)
+- Doc: Update param name in librespot example (PR #1476)
 
 ### Contributors
 
 - @badaix
 - @malkstar
+- @CarlosDerSeher
+- @tremby
+- @genericuser256
+- @flocke
+- @olorin
 
-_Johannes Pohl <snapcast@badaix.de>  Wed, 24 Dec 2025 00:13:37 +0200_
+_Johannes Pohl <snapcast@badaix.de>  Sun, 08 Mar 2026 00:13:37 +0200_
 
 # Snapcast changelog
 

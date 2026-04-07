@@ -200,7 +200,7 @@ sudo apt install -y shairport-sync
 sudo systemctl disable --now shairport-sync
 ```
 
-Here is an example configuration line for `/etc/snapserver.conf` but please see [the Snapcast Airplay configuration guide](configuration.md#airplay) for more details on the syntax and options.
+Here is an example configuration line for `/etc/snapserver.conf` but please see [the Snapcast Airplay configuration guide](repos/santcasp/doc/configuration.md#airplay) for more details on the syntax and options.
 
 ```ini
 source = airplay:///shairport-sync?name=Airplay

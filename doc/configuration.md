@@ -35,7 +35,7 @@ Supported parameters for all source types:
 - `codec`: Override the global codec
 - `sampleformat`: Override the global sample format
 - `chunk_ms`: Override the global `chunk_ms`
-- `controlscript`: Script to control the stream source and read and provide meta data, see [stream_plugin.md](json_rpc_api/stream_plugin.md)
+- `controlscript`: Script to control the stream source and read and provide meta data, see [stream_plugin.md](repos/santcasp/doc/json_rpc_api/stream_plugin.md)
 - `controlscriptparams`: Control script command line arguments, must be url-encoded (use `%20` instead of a space " "), e.g. `--mopidy-host=192.168.42.23%20--debug`
 
 Available audio source types are:
@@ -90,10 +90,11 @@ Parameters introduced by Snapclient:
 Add a stream source entry of type `process` which is briefly described further down, to `/etc/snapserver.conf` to launch [go-librespot](https://github.com/devgianlu/go-librespot) and read audio from stdout. Note that adding several more such stream sources with different profiles will require to have different configuration directories for `go-librespot`, each configured with different device name and server port accordingly:
 
 ```sh
-source = process:///<path/to/go-librespot>?name=<name>&params=--config_dir%20/var/lib/snapserver/.config/go-librespot/<name>&dryout_ms=2000&wd_timeout=0&log_stderr=false&controlscript=meta_go-librespot.py&controlscriptparams=--stream=<name>%20--librespot-host=127.0.0.1%20--librespot-port=24879
+source = process:///<path/to/go-librespot>?name=<name>&sampleformat=44100:16:2&params=--config_dir%20/var/lib/snapserver/.config/go-librespot/<name>&idle_threshold=2000&wd_timeout=0&log_stderr=false&controlscript=meta_go-librespot.py&controlscriptparams=--stream=<name>%20--librespot-host=127.0.0.1%20--librespot-port=24879
 ```
 
 You need to have the `go-librespot` binary on your machine and a configuration file located in the path passed as `--config_dir` in the above source example, which of course need to be accessible to the snapserver user.
+`go-librespot` uses a sample rate of `44100` for the pipe output, you can either configure this globally for snapcast or specify it only for the `go-librespot` source (see example above).
 
 #### go-librespot configuration file
 
@@ -307,7 +308,7 @@ The output of any audio player that uses alsa can be redirected to Snapcast by u
 
 ### pipewire
 
-Direct audio capture from PipeWire, see the [PipeWire Stream Usage Guide](pipewire-stream.md)
+Direct audio capture from PipeWire, see the [PipeWire Stream Usage Guide](repos/santcasp/doc/pipewire-stream.md)
 
 ### jack
 

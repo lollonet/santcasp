@@ -12,10 +12,14 @@ endif()
 project(
   snapcast
   LANGUAGES CXX
-  VERSION 0.34.1-santcasp)
+  VERSION 0.35.0)
 
 set(PROJECT_DESCRIPTION "Multiroom client-server audio player")
 set(PROJECT_URL "https://github.com/snapcast/snapcast")
+
+# santcasp fork version: <upstream>+santcasp.<release>
+set(SANTCASP_RELEASE 1)
+set(SANTCASP_VERSION "${PROJECT_VERSION}+santcasp.${SANTCASP_RELEASE}")
 
 option(BUILD_SHARED_LIBS "Build snapcast in a shared context" ON)
 option(BUILD_STATIC_LIBS "Build snapcast in a static context" ON)
@@ -156,7 +160,7 @@ endif()
 set(INCLUDE_DIRS "${CMAKE_SOURCE_DIR}" "${CMAKE_INSTALL_INCLUDEDIR}")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
-add_compile_definitions(VERSION="${PROJECT_VERSION}")
+add_compile_definitions(VERSION="${SANTCASP_VERSION}")
 
 if(NOT ANDROID)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)

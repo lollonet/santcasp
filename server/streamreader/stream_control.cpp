@@ -1,6 +1,6 @@
 /***
     This file is part of snapcast
-    Copyright (C) 2014-2025  Johannes Pohl
+    Copyright (C) 2014-2026  Johannes Pohl
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,24 +45,24 @@ StreamControl::StreamControl(const boost::asio::any_io_executor& executor) : exe
 
 
 
-void StreamControl::start(const std::string& stream_id, const ServerSettings& server_setttings, const OnNotification& notification_handler,
-                          const OnRequest& request_handler, const OnLog& log_handler)
+void StreamControl::start(const std::string& stream_id, const ServerSettings& server_setttings, OnNotification&& notification_handler,
+                          OnRequest&& request_handler, OnLog&& log_handler)
 {
-    notification_handler_ = notification_handler;
-    request_handler_ = request_handler;
-    log_handler_ = log_handler;
+    notification_handler_ = std::move(notification_handler);
+    request_handler_ = std::move(request_handler);
+    log_handler_ = std::move(log_handler);
 
     doStart(stream_id, server_setttings);
 }
 
 
-void StreamControl::command(const jsonrpcpp::Request& request, const OnResponse& response_handler)
+void StreamControl::command(const jsonrpcpp::Request& request, OnResponse&& response_handler)
 {
     // use strand to serialize commands sent from different threads
-    boost::asio::post(executor_, [this, request, response_handler]()
+    boost::asio::post(executor_, [this, request, response_handler = std::move(response_handler)]() mutable
     {
         if (response_handler)
-            request_callbacks_[request.id()] = response_handler;
+            request_callbacks_[request.id()] = std::move(response_handler);
 
         doCommand(request);
     });

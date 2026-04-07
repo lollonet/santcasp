@@ -416,7 +416,7 @@ Some requests might return more specific json error messages.
 
 #### Request
 
-Same request as in [Plugin.Stream.Player.Control](stream_plugin.md#pluginstreamplayercontrol), but with the method `Stream.Control`.
+Same request as in [Plugin.Stream.Player.Control](repos/santcasp/doc/json_rpc_api/stream_plugin.md#pluginstreamplayercontrol), but with the method `Stream.Control`.
 
 ```json
 {"id": 1, "jsonrpc": "2.0", "method": "Stream.Control", "params": {"command": "<command>", "params": { "<param 1>": <value 1>, "<param 2>": <value 2>}}}
@@ -431,7 +431,7 @@ Example:
 
 #### Supported `command`s
 
-See [Plugin.Stream.Player.Control](stream_plugin.md#pluginstreamplayercontrol).
+See [Plugin.Stream.Player.Control](repos/santcasp/doc/json_rpc_api/stream_plugin.md#pluginstreamplayercontrol).
 
 #### Response
 
@@ -464,7 +464,7 @@ See [Plugin.Stream.Player.Control](stream_plugin.md#pluginstreamplayercontrol).
 
 #### Request
 
-Same request as in [Plugin.Stream.Player.SetProperty](stream_plugin.md#pluginstreamplayersetproperty), but with the method `Stream.SetProperty`.
+Same request as in [Plugin.Stream.Player.SetProperty](repos/santcasp/doc/json_rpc_api/stream_plugin.md#pluginstreamplayersetproperty), but with the method `Stream.SetProperty`.
 
 ```json
 {"id": 1, "jsonrpc": "2.0", "method": "Stream.SetProperty", "params": {"id": "Pipe", "property": property, "value": value}}
@@ -472,7 +472,7 @@ Same request as in [Plugin.Stream.Player.SetProperty](stream_plugin.md#pluginstr
 
 #### Supported `property`s
 
-See [Plugin.Stream.Player.SetProperty](stream_plugin.md#pluginstreamplayersetproperty).
+See [Plugin.Stream.Player.SetProperty](repos/santcasp/doc/json_rpc_api/stream_plugin.md#pluginstreamplayersetproperty).
 
 #### Response
 
@@ -584,7 +584,7 @@ The optional`controlscript` of the `streamUri` must be located in `[stream] plug
 
 ### Stream.OnProperties
 
-Same notification as in [Plugin.Stream.Player.Properties](stream_plugin.md#pluginstreamplayerproperties), but with the method `Stream.OnProperties`.
+Same notification as in [Plugin.Stream.Player.Properties](repos/santcasp/doc/json_rpc_api/stream_plugin.md#pluginstreamplayerproperties), but with the method `Stream.OnProperties`.
 
 ```json
 {"jsonrpc":"2.0","method":"Stream.OnProperties","params":{"id":"stream 1", "metadata": {"album": "some album", "artist": "some artist", "track": "some track"...}}}
