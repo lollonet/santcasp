@@ -12,7 +12,7 @@ endif()
 project(
   snapcast
   LANGUAGES CXX
-  VERSION 0.34.1-santcasp)
+  VERSION 0.35.0)
 
 set(PROJECT_DESCRIPTION "Multiroom client-server audio player")
 set(PROJECT_URL "https://github.com/snapcast/snapcast")
