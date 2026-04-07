@@ -59,10 +59,10 @@ void StreamControl::start(const std::string& stream_id, const ServerSettings& se
 void StreamControl::command(const jsonrpcpp::Request& request, OnResponse&& response_handler)
 {
     // use strand to serialize commands sent from different threads
-    boost::asio::post(executor_, [this, request, response_handler]()
+    boost::asio::post(executor_, [this, request, response_handler = std::move(response_handler)]() mutable
     {
         if (response_handler)
-            request_callbacks_[request.id()] = response_handler;
+            request_callbacks_[request.id()] = std::move(response_handler);
 
         doCommand(request);
     });

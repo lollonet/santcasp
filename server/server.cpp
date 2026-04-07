@@ -422,6 +422,11 @@ void Server::onMessageReceived(const std::shared_ptr<StreamSession>& streamSessi
         if (!stream)
         {
             stream = streamManager_->getDefaultStream();
+            if (!stream)
+            {
+                LOG(WARNING, LOG_TAG) << "No streams available for client " << streamSession->clientId << "\n";
+                return;
+            }
             group->streamId = stream->getId();
         }
         LOG(DEBUG, LOG_TAG) << "Group: " << group->id << ", stream: " << group->streamId << "\n";
