@@ -9,13 +9,15 @@
 
 ## Background
 
-Snapcast streams audio as a sequence of compressed frames called **WireChunks** (~50 per second, one per 20 ms of audio). The server stamps each chunk with the time it was sent (`sent` field in the base message header). The client records the time it received each chunk (`received` field).
+Snapcast streams audio as a sequence of compressed frames called **WireChunks** (~50 per second). Each chunk carries a `timestamp` field — the audio playout time on the server clock, which advances by exactly `chunk_ms` per chunk. The client records the time it received each chunk (`received` field).
 
-**Inter-Packet Delay Variation (IPDV)** measures how consistently those chunks arrive. On a perfect network, the gap between consecutive received chunks equals the gap between their sent timestamps. Any deviation is IPDV — the standard metric for perceptible audio glitching.
+**Inter-Packet Delay Variation (IPDV)** measures how consistently those chunks arrive. On a perfect network, the gap between consecutive received chunks equals the gap between their playout timestamps. Any deviation is IPDV — the standard metric for perceptible audio glitching.
 
 ```
-IPDV[n] = |(recv[n] - recv[n-1]) - (sent[n] - sent[n-1])|
+IPDV[n] = |(recv[n] - recv[n-1]) - (timestamp[n] - timestamp[n-1])|
 ```
+
+> **Note**: Use the WireChunk `timestamp` field, not `base.sent`. The `base.sent` field is set once at serialization and is identical for all clients — it measures server encoding stability, not delivery jitter.
 
 Clock offsets between server and client cancel out in the subtraction (RFC 3550 §6.4.1), so no time synchronization is required for this calculation.
 

@@ -297,7 +297,7 @@ Returns audio-path and control-path jitter statistics for a client, plus a sugge
 | `control_samples` | int | Number of control-path IPDV samples (max 100) |
 | `suggested_buffer_ms` | int | Suggested latency adjustment. Negative = increase buffer. 0 = no change needed |
 
-The `suggested_buffer_ms` is computed as `-(P95 * 1.5)` when P95 jitter exceeds 2ms, preferring audio-path data when available, falling back to control-path data.
+The `suggested_buffer_ms` is computed as `round(-(P95 * 1.5))` when P95 jitter exceeds 2ms, otherwise 0. Uses audio-path P95 when `audio_samples > 0`, otherwise falls back to control-path P95.
 
 ### Group.GetStatus
 
