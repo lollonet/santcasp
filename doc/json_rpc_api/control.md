@@ -148,6 +148,7 @@ The Server JSON object contains a list of Groups and Streams. Every Group holds 
   * [Client.SetVolume](#clientsetvolume)
   * [Client.SetLatency](#clientsetlatency)
   * [Client.SetName](#clientsetname)
+  * [Client.GetTimeStats](#clientgettimestats)
 * Group
   * [Group.GetStatus](#groupgetstatus)
   * [Group.SetMute](#groupsetmute)
@@ -269,6 +270,34 @@ Some requests might return more specific json error messages.
 ```json
 {"jsonrpc":"2.0","method":"Client.OnNameChanged","params":{"id":"00:21:6a:7d:74:fc#2","name":"Laptop"}}
 ```
+
+### Client.GetTimeStats
+
+Returns audio-path and control-path jitter statistics for a client, plus a suggested buffer adjustment.
+
+#### Request
+
+```json
+{"id":9,"jsonrpc":"2.0","method":"Client.GetTimeStats","params":{"id":"00:21:6a:7d:74:fc"}}
+```
+
+#### Response
+
+```json
+{"id":9,"jsonrpc":"2.0","result":{"id":"00:21:6a:7d:74:fc","audio_jitter_median_ms":4.2,"audio_jitter_p95_ms":16.0,"audio_samples":200,"control_jitter_median_ms":0.003,"control_jitter_p95_ms":0.016,"control_samples":100,"suggested_buffer_ms":-24}}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `audio_jitter_median_ms` | double | Client-reported IPDV median on audio chunks (~50Hz) |
+| `audio_jitter_p95_ms` | double | Client-reported IPDV 95th percentile |
+| `audio_samples` | int | Number of IPDV samples in client buffer (max 200) |
+| `control_jitter_median_ms` | double | Server-measured IPDV median on Time messages (~1Hz) |
+| `control_jitter_p95_ms` | double | Server-measured IPDV 95th percentile |
+| `control_samples` | int | Number of control-path IPDV samples (max 100) |
+| `suggested_buffer_ms` | int | Suggested latency adjustment. Negative = increase buffer. 0 = no change needed |
+
+The `suggested_buffer_ms` is computed as `-(P95 * 1.5)` when P95 jitter exceeds 2ms, preferring audio-path data when available, falling back to control-path data.
 
 ### Group.GetStatus
 

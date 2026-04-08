@@ -66,9 +66,11 @@ Offset  Size  Type    Field              Description
 12      var   bytes   payload            Encoded audio (FLAC / Ogg / Opus / PCM)
 ```
 
-> **Important**: `timestamp` is the *playout* time on the server clock, **not** the send time.
-> For IPDV, use `base.sent` (server transmit time) and `base.received` (client arrival time),
-> not `timestamp`.
+> **Important**: For IPDV, use `timestamp` (audio playout time) as the sent reference and
+> `base.received` (client arrival time) as the received reference. Do **not** use `base.sent` —
+> it is set once at serialization time and is identical for all clients, measuring server encoding
+> stability rather than network delivery jitter. The `timestamp` field advances by exactly
+> `chunk_ms` per chunk, providing a perfectly regular reference.
 
 ### ClientInfo Typed Payload (JSON)
 
@@ -214,7 +216,7 @@ Call this from your receive queue for every message of type `2` (WireChunk):
 
 ```swift
 /// Called from the network receive queue for every WireChunk.
-/// sentSec / sentUsec come from base.sent in the message header.
+/// sentSec / sentUsec come from the WireChunk `timestamp` field (audio playout time).
 /// recvSec / recvUsec come from base.received stamped in Step 1.
 func onWireChunk(sentSec: Int32, sentUsec: Int32,
                  recvSec: Int32, recvUsec: Int32) {
