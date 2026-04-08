@@ -2,7 +2,7 @@
 
 Prebuilt [snapclient and snapserver](https://github.com/snapcast/snapcast) binaries for Linux, macOS and Windows.
 
-> This is a fork of [Snapcast](https://github.com/snapcast/snapcast) by [Johannes Pohl](https://github.com/badaix).
+> Fork maintained by [Claudio Loletti](https://github.com/lollonet) — based on [Snapcast](https://github.com/snapcast/snapcast) by [Johannes Pohl](https://github.com/badaix).
 > All credit for the original software goes to the upstream project and its [contributors](https://github.com/snapcast/snapcast/graphs/contributors).
 
 ## What is this?
@@ -62,12 +62,16 @@ Extract and run the binary directly. On macOS, the bundled `libs/` directory mus
 This project is a fork of **Snapcast** — a multiroom client-server audio player where all clients are time synchronized with the server to play perfectly synced audio.
 
 - Upstream repo: https://github.com/snapcast/snapcast
-- Author: [Johannes Pohl](https://github.com/badaix)
+- Original author: [Johannes Pohl](https://github.com/badaix)
+- Fork maintainer: [Claudio Loletti](https://github.com/lollonet)
 - Upstream releases: https://github.com/snapcast/snapcast/releases
 
 ## License
 
 GPLv3+ — same as upstream. See [LICENSE](LICENSE).
+
+Copyright (C) 2014-2025 Johannes Pohl (original Snapcast)
+Copyright (C) 2026 Claudio Loletti (santcasp fork — adaptive latency, IPDV jitter measurement)
 
 ## Sources
 
