@@ -238,6 +238,8 @@ void Controller::getNextMessage()
         else if (response->type == message_type::kServerSettings)
         {
             serverSettings_ = msg::message_cast<msg::ServerSettings>(std::move(response));
+            if (!serverSettings_)
+                return getNextMessage();
             LOG(INFO, LOG_TAG) << "ServerSettings - buffer: " << serverSettings_->getBufferMs() << ", latency: " << serverSettings_->getLatency()
                                << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted() << "\n";
             if (stream_ && player_)

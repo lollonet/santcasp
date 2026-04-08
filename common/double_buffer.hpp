@@ -97,6 +97,8 @@ public:
     {
         if (buffer.empty())
             return T{};
+        if (buffer.size() == 1)
+            return buffer.front();
         std::deque<T> tmpBuffer(buffer.begin(), buffer.end());
         std::sort(tmpBuffer.begin(), tmpBuffer.end());
         return tmpBuffer[static_cast<size_t>((tmpBuffer.size() - 1) * (static_cast<double>(percentile) / 100.0))];
@@ -110,6 +112,11 @@ public:
         result.fill(T{});
         if (buffer.empty())
             return result;
+        if (buffer.size() == 1)
+        {
+            result.fill(buffer.front());
+            return result;
+        }
         std::deque<T> tmpBuffer(buffer.begin(), buffer.end());
         std::sort(tmpBuffer.begin(), tmpBuffer.end());
         for (std::size_t i = 0; i < Size; ++i)
