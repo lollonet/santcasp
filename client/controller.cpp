@@ -201,6 +201,8 @@ void Controller::getNextMessage()
         {
             // Cast first so we can access the audio timestamp for IPDV
             auto pcmChunk = msg::message_cast<msg::PcmChunk>(std::move(response));
+            if (!pcmChunk)
+                return getNextMessage();
 
             // Compute IPDV on audio chunk arrivals.
             // Use the audio playout timestamp (perfectly spaced at chunk_ms intervals)
@@ -231,7 +233,6 @@ void Controller::getNextMessage()
                     // pcmChunk->timestamp.sec << ", usec: " << pcmChunk->timestamp.usec / 1000 << ", type: " << pcmChunk->type << "\n";
                     stream_->addChunk(std::move(pcmChunk));
                 }
-                // });
             }
         }
         else if (response->type == message_type::kServerSettings)
