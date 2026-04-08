@@ -406,6 +406,18 @@ boost::system::error_code ClientConnectionTcp::doConnect(boost::asio::ip::basic_
 {
     boost::system::error_code ec;
     socket_.connect(endpoint, ec);
+    if (!ec)
+    {
+#ifndef WINDOWS
+        // Log TCP receive buffer size to diagnose jitter measurement accuracy.
+        // Large buffers (64-256KB) absorb network jitter, making application-layer
+        // IPDV measurements show microsecond values even on WiFi.
+        int rcvbuf = 0;
+        socklen_t optlen = sizeof(rcvbuf);
+        if (getsockopt(socket_.native_handle(), SOL_SOCKET, SO_RCVBUF, &rcvbuf, &optlen) == 0)
+            LOG(INFO, LOG_TAG) << "TCP SO_RCVBUF: " << rcvbuf << " bytes\n";
+#endif
+    }
     return ec;
 }
 
