@@ -33,6 +33,7 @@
 
 // standard headers
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -564,9 +565,9 @@ void Server::stop()
 void Server::autoTuneLatency()
 {
     const auto& al = settings_.streamingclient.autoLatency;
-    auto interval = std::chrono::seconds(al.intervalSec);
+    auto intervalSec = std::max<int32_t>(1, al.intervalSec);
 
-    auto_latency_timer_.expires_after(interval);
+    auto_latency_timer_.expires_after(std::chrono::seconds(intervalSec));
     auto_latency_timer_.async_wait([this](const boost::system::error_code& ec)
     {
         if (ec)
@@ -575,6 +576,19 @@ void Server::autoTuneLatency()
         try
         {
             const auto& al = settings_.streamingclient.autoLatency;
+
+            // Validate config — disable tuning on invalid values
+            if (al.smoothingFactor <= 0.0 || al.smoothingFactor > 1.0)
+            {
+                LOG(ERROR, LOG_TAG) << "auto_latency_smoothing must be in (0, 1], got " << al.smoothingFactor << " — disabling auto-tune\n";
+                return;
+            }
+            if (al.safetyFactor <= 0.0)
+            {
+                LOG(ERROR, LOG_TAG) << "auto_latency_safety_factor must be > 0, got " << al.safetyFactor << " — disabling auto-tune\n";
+                return;
+            }
+
             constexpr double kJitterThresholdMs = 2.0;
             bool config_changed = false;
 
@@ -597,7 +611,10 @@ void Server::autoTuneLatency()
                     // Compute target: -(P95 * safety) if P95 > threshold, else 0
                     int target = 0;
                     if (jitter.p95_ms > kJitterThresholdMs)
-                        target = -static_cast<int>(jitter.p95_ms * al.safetyFactor + 0.5);
+                    {
+                        int64_t raw = std::lround(-jitter.p95_ms * al.safetyFactor);
+                        target = static_cast<int>(std::max<int64_t>(raw, -al.maxLatencyMs));
+                    }
 
                     int current = client->config.latency;
 
@@ -606,7 +623,7 @@ void Server::autoTuneLatency()
                         continue;
 
                     // Exponential smoothing toward target
-                    int smoothed = static_cast<int>((1.0 - al.smoothingFactor) * current + al.smoothingFactor * target + 0.5);
+                    int smoothed = static_cast<int>(std::lround((1.0 - al.smoothingFactor) * current + al.smoothingFactor * target));
 
                     // Clamp to [-maxLatencyMs, bufferMs]
                     smoothed = std::max(-al.maxLatencyMs, std::min(smoothed, settings_.stream.bufferMs));

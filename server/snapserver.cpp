@@ -183,6 +183,8 @@ int main(int argc, char* argv[])
                                 settings.streamingclient.autoLatency.safetyFactor, &settings.streamingclient.autoLatency.safetyFactor);
         conf.add<Value<double>>("", "streaming_client.auto_latency_smoothing", "Exponential smoothing factor (0-1)",
                                 settings.streamingclient.autoLatency.smoothingFactor, &settings.streamingclient.autoLatency.smoothingFactor);
+        conf.add<Value<int32_t>>("", "streaming_client.auto_latency_max_latency", "Maximum auto-tuned latency magnitude [ms]",
+                                 settings.streamingclient.autoLatency.maxLatencyMs, &settings.streamingclient.autoLatency.maxLatencyMs);
 
         // logging settings
         conf.add<Value<string>>("", "logging.sink", "log sink [null,system,stdout,stderr,file:<filename>]", settings.logging.sink, &settings.logging.sink);
