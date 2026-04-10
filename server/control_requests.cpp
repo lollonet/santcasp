@@ -269,6 +269,7 @@ void ClientSetLatencyRequest::execute(const jsonrpcpp::request_ptr& request, Aut
         latency = getSettings().stream.bufferMs;
     auto client_info = getClient(request);
     client_info->config.latency = latency; //, -10000, settings_.stream.bufferMs);
+    client_info->config.autoLatencyDisabled = true; // manual override disables auto-tune
     Json result;
     result["latency"] = client_info->config.latency;
 

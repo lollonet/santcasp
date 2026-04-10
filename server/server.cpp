@@ -33,6 +33,7 @@
 
 // standard headers
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -48,7 +49,8 @@ static constexpr auto LOG_TAG = "Server";
 
 
 Server::Server(boost::asio::io_context& io_context, ServerSettings serverSettings)
-    : io_context_(io_context), config_timer_(io_context), settings_(std::move(serverSettings)), request_factory_(*this)
+    : io_context_(io_context), config_timer_(io_context), auto_latency_timer_(io_context), settings_(std::move(serverSettings)),
+      request_factory_(*this)
 {
 }
 
@@ -517,6 +519,15 @@ void Server::start()
         streamManager_->start();
         controlServer_->start();
         streamServer_->start();
+
+        if (settings_.streamingclient.autoLatency.enabled)
+        {
+            LOG(INFO, LOG_TAG) << "Auto-latency tuning enabled (interval=" << settings_.streamingclient.autoLatency.intervalSec
+                               << "s, threshold=" << settings_.streamingclient.autoLatency.thresholdMs
+                               << "ms, safety=" << settings_.streamingclient.autoLatency.safetyFactor
+                               << ", smoothing=" << settings_.streamingclient.autoLatency.smoothingFactor << ")\n";
+            autoTuneLatency();
+        }
     }
     catch (const std::exception& e)
     {
@@ -529,6 +540,8 @@ void Server::start()
 
 void Server::stop()
 {
+    auto_latency_timer_.cancel();
+
     if (streamManager_)
     {
         streamManager_->stop();
@@ -546,4 +559,115 @@ void Server::stop()
         streamServer_->stop();
         streamServer_ = nullptr;
     }
+}
+
+
+void Server::autoTuneLatency()
+{
+    const auto& al = settings_.streamingclient.autoLatency;
+    auto intervalSec = std::max<int32_t>(1, al.intervalSec);
+
+    auto_latency_timer_.expires_after(std::chrono::seconds(intervalSec));
+    auto_latency_timer_.async_wait([this](const boost::system::error_code& ec)
+    {
+        if (ec)
+            return;
+
+        try
+        {
+            const auto& al = settings_.streamingclient.autoLatency;
+
+            // Validate config — disable tuning on invalid values
+            if (al.smoothingFactor <= 0.0 || al.smoothingFactor > 1.0)
+            {
+                LOG(ERROR, LOG_TAG) << "auto_latency_smoothing must be in (0, 1], got " << al.smoothingFactor << " — disabling auto-tune\n";
+                return;
+            }
+            if (al.safetyFactor <= 0.0)
+            {
+                LOG(ERROR, LOG_TAG) << "auto_latency_safety_factor must be > 0, got " << al.safetyFactor << " — disabling auto-tune\n";
+                return;
+            }
+            if (al.maxLatencyMs <= 0)
+            {
+                LOG(ERROR, LOG_TAG) << "auto_latency_max_latency must be > 0, got " << al.maxLatencyMs << " — disabling auto-tune\n";
+                return;
+            }
+
+            constexpr double kJitterThresholdMs = 2.0;
+            bool config_changed = false;
+
+            std::lock_guard<std::mutex> lock(Config::instance().getMutex());
+            for (const auto& group : Config::instance().groups)
+            {
+                for (const auto& client : group->clients)
+                {
+                    if (!client->connected || client->config.autoLatencyDisabled)
+                        continue;
+
+                    session_ptr session = streamServer_->getStreamSession(client->id);
+                    if (!session)
+                        continue;
+
+                    auto jitter = session->clientJitter();
+                    if (jitter.samples < 50)
+                        continue;
+
+                    // Compute target: -(P95 * safety) if P95 > threshold, else 0
+                    int target = 0;
+                    if (jitter.p95_ms > kJitterThresholdMs)
+                    {
+                        int64_t raw = std::lround(-jitter.p95_ms * al.safetyFactor);
+                        target = static_cast<int>(std::max<int64_t>(raw, -al.maxLatencyMs));
+                    }
+
+                    int current = client->config.latency;
+
+                    // Only act if target differs significantly from current
+                    if (std::abs(target - current) <= al.thresholdMs)
+                        continue;
+
+                    // Exponential smoothing toward target
+                    int smoothed = static_cast<int>(std::lround((1.0 - al.smoothingFactor) * current + al.smoothingFactor * target));
+
+                    // Clamp to [-maxLatencyMs, bufferMs]
+                    smoothed = std::max(-al.maxLatencyMs, std::min(smoothed, settings_.stream.bufferMs));
+
+                    if (smoothed == current)
+                        continue;
+
+                    LOG(INFO, LOG_TAG) << "Auto-latency client=" << client->id
+                                       << " jitter_p95=" << jitter.p95_ms << "ms"
+                                       << " target=" << target << "ms"
+                                       << " latency " << current << "ms -> " << smoothed << "ms\n";
+
+                    client->config.latency = smoothed;
+                    config_changed = true;
+
+                    // Push ServerSettings to client
+                    auto serverSettings = std::make_shared<msg::ServerSettings>();
+                    serverSettings->setBufferMs(settings_.stream.bufferMs);
+                    serverSettings->setVolume(client->config.volume.percent);
+                    serverSettings->setMuted(client->config.volume.muted || group->muted);
+                    serverSettings->setLatency(client->config.latency);
+                    session->send(serverSettings);
+
+                    // Notify control clients (Snapweb, HA, etc.)
+                    json notification = jsonrpcpp::Notification("Client.OnLatencyChanged",
+                        jsonrpcpp::Parameter("id", client->id, "latency", client->config.latency)).to_json();
+                    controlServer_->send(notification.dump());
+                }
+            }
+
+            if (config_changed)
+                saveConfig();
+        }
+        catch (const std::exception& e)
+        {
+            LOG(ERROR, LOG_TAG) << "Auto-latency error: " << e.what() << "\n";
+        }
+
+        // Reschedule
+        autoTuneLatency();
+    });
 }

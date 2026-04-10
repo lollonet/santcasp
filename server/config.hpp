@@ -154,6 +154,7 @@ struct ClientConfig : public JsonConfigItem
         volume.fromJson(j["volume"]);
         latency = jGet<int32_t>(j, "latency", 0);
         instance = jGet<size_t>(j, "instance", 1);
+        autoLatencyDisabled = jGet<bool>(j, "auto_latency_disabled", false);
     }
 
     json toJson() override
@@ -163,13 +164,15 @@ struct ClientConfig : public JsonConfigItem
         j["volume"] = volume.toJson();
         j["latency"] = latency;
         j["instance"] = instance;
+        j["auto_latency_disabled"] = autoLatencyDisabled;
         return j;
     }
 
-    std::string name;   ///< client name
-    Volume volume;      ///< client volume
-    int32_t latency{0}; ///< additional latency
-    size_t instance{1}; ///< instance id
+    std::string name;              ///< client name
+    Volume volume;                 ///< client volume
+    int32_t latency{0};            ///< additional latency
+    size_t instance{1};            ///< instance id
+    bool autoLatencyDisabled{false}; ///< true if user manually set latency (disables auto-tune)
 };
 
 
