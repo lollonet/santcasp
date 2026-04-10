@@ -172,6 +172,18 @@ int main(int argc, char* argv[])
         conf.add<Value<uint16_t>>("", "streaming_client.initial_volume", "Volume [percent] assigned to new streaming clients",
                                   settings.streamingclient.initialVolume, &settings.streamingclient.initialVolume);
 
+        // auto-latency tuning
+        conf.add<Value<bool>>("", "streaming_client.auto_latency", "Enable auto-latency tuning based on jitter",
+                              settings.streamingclient.autoLatency.enabled, &settings.streamingclient.autoLatency.enabled);
+        conf.add<Value<int32_t>>("", "streaming_client.auto_latency_interval", "Auto-latency recalculation interval [s]",
+                                 settings.streamingclient.autoLatency.intervalSec, &settings.streamingclient.autoLatency.intervalSec);
+        conf.add<Value<int32_t>>("", "streaming_client.auto_latency_threshold", "Minimum |target-current| to trigger update [ms]",
+                                 settings.streamingclient.autoLatency.thresholdMs, &settings.streamingclient.autoLatency.thresholdMs);
+        conf.add<Value<double>>("", "streaming_client.auto_latency_safety_factor", "Multiplier on P95 jitter for target latency",
+                                settings.streamingclient.autoLatency.safetyFactor, &settings.streamingclient.autoLatency.safetyFactor);
+        conf.add<Value<double>>("", "streaming_client.auto_latency_smoothing", "Exponential smoothing factor (0-1)",
+                                settings.streamingclient.autoLatency.smoothingFactor, &settings.streamingclient.autoLatency.smoothingFactor);
+
         // logging settings
         conf.add<Value<string>>("", "logging.sink", "log sink [null,system,stdout,stderr,file:<filename>]", settings.logging.sink, &settings.logging.sink);
         auto logfilterOption = conf.add<Value<string>>(

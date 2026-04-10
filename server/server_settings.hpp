@@ -238,6 +238,18 @@ struct ServerSettings
     {
         /// Initial volume of new clients
         uint16_t initialVolume{100};
+
+        /// Auto-latency tuning
+        struct AutoLatency
+        {
+            bool enabled{false};           ///< Enable auto-latency tuning (opt-in)
+            int32_t intervalSec{30};        ///< Seconds between recalculations
+            int32_t thresholdMs{5};         ///< Minimum |target - current| to trigger adjustment
+            double safetyFactor{1.5};       ///< Multiplier on P95 jitter for target latency
+            double smoothingFactor{0.2};    ///< Exponential smoothing alpha (0-1, lower = more stable)
+            int32_t maxLatencyMs{200};      ///< Maximum auto-tuned latency magnitude (capped at -maxLatencyMs)
+        };
+        AutoLatency autoLatency;
     };
 
     /// Logging settings
