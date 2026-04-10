@@ -588,6 +588,11 @@ void Server::autoTuneLatency()
                 LOG(ERROR, LOG_TAG) << "auto_latency_safety_factor must be > 0, got " << al.safetyFactor << " — disabling auto-tune\n";
                 return;
             }
+            if (al.maxLatencyMs <= 0)
+            {
+                LOG(ERROR, LOG_TAG) << "auto_latency_max_latency must be > 0, got " << al.maxLatencyMs << " — disabling auto-tune\n";
+                return;
+            }
 
             constexpr double kJitterThresholdMs = 2.0;
             bool config_changed = false;
